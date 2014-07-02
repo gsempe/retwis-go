@@ -8,8 +8,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/deckarep/golang-set"
 	"github.com/garyburd/redigo/redis"
 	"github.com/gorilla/securecookie"
+	"github.com/kylemcc/twitter-text-go/extract"
 )
 
 func isLogin(auth string) (*User, error) {
@@ -151,9 +153,24 @@ func post(user *User, status string) error {
 	if err != nil {
 		return err
 	}
-	followers = append(followers, user.Id)
+	recipients := mapset.NewSet()
 	for _, fId := range followers {
-		conn.Do("LPUSH", "posts:"+fId, postId)
+		recipients.Add(fId)
+	}
+	entities := extract.ExtractMentionedScreenNames(status)
+	for _, e := range entities {
+			username, _ := e.ScreenName()
+			profile, err := profileByUsername(username)
+			if err == nil {
+				recipients.Add(profile.Id)
+			}
+	}
+	recipients.Add(user.Id)
+	for fId := range recipients.Iter() {
+		str, ok := fId.(string)
+		if ok {
+			conn.Do("LPUSH", "posts:"+str, postId)
+		}
 	}
 	_, err = conn.Do("LPUSH", "timeline", postId)
 	if err != nil {
