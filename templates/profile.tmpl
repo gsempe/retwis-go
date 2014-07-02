@@ -1,0 +1,29 @@
+{{template "header" . }}
+<h2 class="username">"{{.profile.Username}}"</h2>
+{{if .user}}
+	{{if not (.user.Is .profile)}}
+		{{if not (.user.IsFollowing .profile)}}
+			<a href="follow?uid={{.profile.Id}}&f=1" class="button">Follow this user</a>
+		{{else}}
+			<a href="follow?uid={{.profile.Id}}&f=0" class="button">Stop following</a>
+		{{end}}
+	{{end}}
+{{end}}
+{{range .posts}}
+<div class="post">
+	<a class="username" href="profile?u={{.Username}}">{{.Username}}</a>
+	{{.Body}}<br>
+	<i>posted {{.Elapsed}} ago via web </i>
+</div>
+{{end}}
+{{if or .prev .next}}
+<div class="rightlink">
+	{{if .prev}}
+		<a href="?start={{.prev}}&u={{.profile.Username}}">&laquo; Newer posts</a>
+	{{end}}
+	{{if .next}}
+		<a href="?start={{.next}}&u={{.profile.Username}}">Older posts &raquo;</a>
+	{{end}}
+</div>
+{{end}}
+{{template "footer" . }}

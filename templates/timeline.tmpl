@@ -1,0 +1,17 @@
+{{template "header" . }}
+<h2>Timeline</h2>
+<i>Latest registered users (an example of sorted sets)</i><br>
+<div>
+{{range .users}}
+    <a class="username" href="profile?u={{.Username}}">{{.Username}}</a>
+{{end}}
+</div><br>
+<i>Latest 50 messages from users aroud the world!</i><br>
+{{range .posts}}
+<div class="post">
+	<a class="username" href="profile?u={{.Username}}">{{.Username}}</a>
+	{{.Body}}<br>
+	<i>posted {{.Elapsed}} ago via web </i>
+</div>
+{{end}}
+{{template "footer" . }}
