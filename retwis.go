@@ -30,24 +30,15 @@ func isLogin(auth string) (*User, error) {
 
 func loadUserInfo(userId string) (*User, error) {
 
-	v, err := redis.Strings(conn.Do("HGETALL", "user:"+userId))
+	v, err := redis.Values(conn.Do("HGETALL", "user:"+userId))
 	if err != nil {
 		return nil, err
 	}
-	var username, auth string
-	for i := 0; i < len(v); i++ {
-		if v[i] == "username" {
-			username = v[i+1]
-			i++
-			continue
-		}
-		if v[i] == "auth" {
-			auth = v[i+1]
-			i++
-			continue
-		}
+	u := &User{Id: userId}
+	err = redis.ScanStruct(v, u)
+	if err != nil {
+		return nil, err
 	}
-	u := &User{Id: userId, Username: username, Auth: auth}
 	return u, nil
 }
 

@@ -8,8 +8,8 @@ import (
 
 type User struct {
 	Id       string
-	Username string
-	Auth     string
+	Username string `redis:"username"`
+	Auth     string `redis:"auth"`
 }
 
 type Post struct {
