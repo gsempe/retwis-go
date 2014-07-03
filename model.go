@@ -13,10 +13,10 @@ type User struct {
 }
 
 type Post struct {
-	UserId   string
+	UserId   string `redis:"user_id"`
 	Username string
-	Body     string
-	Elapsed  string
+	Body     string `redis:"body"`
+	Elapsed  string `redis:"time"`
 }
 
 func (user *User) Is(aUser *User) bool {

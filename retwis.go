@@ -136,36 +136,6 @@ func logout(user *User) {
 	}
 }
 
-func post(user *User, status string) error {
-
-	postId, err := redis.Int(conn.Do("INCR", "next_post_id"))
-	if err != nil {
-		return err
-	}
-	status = strings.Replace(status, "\n", " ", -1)
-	_, err = conn.Do("HMSET", fmt.Sprintf("post:%d", postId), "user_id", user.Id, "time", time.Now().Unix(), "body", status)
-	if err != nil {
-		return err
-	}
-	followers, err := redis.Strings(conn.Do("ZRANGE", "followers:"+user.Id, 0, -1))
-	if err != nil {
-		return err
-	}
-	followers = append(followers, user.Id)
-	for _, fId := range followers {
-		conn.Do("LPUSH", "posts:"+fId, postId)
-	}
-	_, err = conn.Do("LPUSH", "timeline", postId)
-	if err != nil {
-		return err
-	}
-	_, err = conn.Do("LTRIM", "timeline", 0, 1000)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func strElapsed(t string) string {
 
 	ts, err := strconv.ParseInt(t, 10, 64)
@@ -200,41 +170,54 @@ func strElapsed(t string) string {
 	}
 }
 
+func post(user *User, status string) error {
+
+	postId, err := redis.Int(conn.Do("INCR", "next_post_id"))
+	if err != nil {
+		return err
+	}
+	status = strings.Replace(status, "\n", " ", -1)
+	_, err = conn.Do("HMSET", fmt.Sprintf("post:%d", postId), "user_id", user.Id, "time", time.Now().Unix(), "body", status)
+	if err != nil {
+		return err
+	}
+	followers, err := redis.Strings(conn.Do("ZRANGE", "followers:"+user.Id, 0, -1))
+	if err != nil {
+		return err
+	}
+	followers = append(followers, user.Id)
+	for _, fId := range followers {
+		conn.Do("LPUSH", "posts:"+fId, postId)
+	}
+	_, err = conn.Do("LPUSH", "timeline", postId)
+	if err != nil {
+		return err
+	}
+	_, err = conn.Do("LTRIM", "timeline", 0, 1000)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func getPost(postId string) (*Post, error) {
 
-	v, err := redis.Strings(conn.Do("HGETALL", "post:"+postId))
+	v, err := redis.Values(conn.Do("HGETALL", "post:"+postId))
 	if err != nil {
 		return nil, err
 	}
-	var userId, body, time string
-	for i := 0; i < len(v); i++ {
-		if v[i] == "user_id" {
-			userId = v[i+1]
-			i++
-			continue
-		}
-		if v[i] == "body" {
-			body = v[i+1]
-			i++
-			continue
-		}
-		if v[i] == "time" {
-			time = v[i+1]
-			i++
-			continue
-		}
-	}
-	username, err := redis.String(conn.Do("HGET", "user:"+userId, "username"))
+	p := &Post{}
+	err = redis.ScanStruct(v, p)
 	if err != nil {
 		return nil, err
 	}
-	post := &Post{
-		UserId:   userId,
-		Username: username,
-		Body:     body,
-		Elapsed:  strElapsed(time),
+	username, err := redis.String(conn.Do("HGET", "user:"+p.UserId, "username"))
+	if err != nil {
+		return nil, err
 	}
-	return post, nil
+	p.Username = username
+	p.Elapsed = strElapsed(p.Elapsed)
+	return p, nil
 }
 
 /*
