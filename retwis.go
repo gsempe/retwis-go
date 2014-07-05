@@ -70,27 +70,15 @@ func profileByUserId(userId string) (*User, error) {
 
 func register(username, password string) (auth string, err error) {
 
-	_, err = redis.Int(conn.Do("HGET", "users", username))
-	if err == nil {
-		return "", errors.New("Sorry the selected username is already in use.")
-	}
-
-	userId, err := redis.Int(conn.Do("INCR", "next_user_id"))
-	if err != nil {
-		return "", err
-	}
 	auth = string(securecookie.GenerateRandomKey(32))
-
-	conn.Send("MULTI")
-	conn.Send("HSET", "users", username, userId)
-	conn.Send("HMSET", fmt.Sprintf("user:%d", userId), "username", username, "password", password, "auth", auth)
-	conn.Send("HSET", "auths", auth, userId)
-	conn.Send("ZADD", "users_by_time", time.Now().Unix(), username)
-	_, err = conn.Do("EXEC")
-	if err != nil {
-		return "", err
-	}
-	return auth, nil
+	auth, err = redis.String(registerScript.Do(
+		conn,
+		"next_user_id",     // KEYS[1]
+		username,           // ARGV[1]
+		password,           // ARGV[2]
+		auth,               // ARGV[3]
+		time.Now().Unix())) // ARGV[4]
+	return auth, err
 }
 
 func login(username, password string) (auth string, err error) {
