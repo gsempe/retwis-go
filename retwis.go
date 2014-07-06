@@ -8,8 +8,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/deckarep/golang-set"
 	"github.com/garyburd/redigo/redis"
 	"github.com/gorilla/securecookie"
+	"github.com/kylemcc/twitter-text-go/extract"
 )
 
 func isLogin(auth string) (*User, error) {
@@ -132,6 +134,51 @@ func logout(user *User) {
 	}
 }
 
+func post(user *User, status string) error {
+
+	postId, err := redis.Int(conn.Do("INCR", "next_post_id"))
+	if err != nil {
+		return err
+	}
+	status = strings.Replace(status, "\n", " ", -1)
+	_, err = conn.Do("HMSET", fmt.Sprintf("post:%d", postId), "user_id", user.Id, "time", time.Now().Unix(), "body", status)
+	if err != nil {
+		return err
+	}
+	followers, err := redis.Strings(conn.Do("ZRANGE", "followers:"+user.Id, 0, -1))
+	if err != nil {
+		return err
+	}
+	recipients := mapset.NewSet()
+	for _, fId := range followers {
+		recipients.Add(fId)
+	}
+	entities := extract.ExtractMentionedScreenNames(status)
+	for _, e := range entities {
+			username, _ := e.ScreenName()
+			profile, err := profileByUsername(username)
+			if err == nil {
+				recipients.Add(profile.Id)
+			}
+	}
+	recipients.Add(user.Id)
+	for fId := range recipients.Iter() {
+		str, ok := fId.(string)
+		if ok {
+			conn.Do("LPUSH", "posts:"+str, postId)
+		}
+	}
+	_, err = conn.Do("LPUSH", "timeline", postId)
+	if err != nil {
+		return err
+	}
+	_, err = conn.Do("LTRIM", "timeline", 0, 1000)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func strElapsed(t string) string {
 
 	ts, err := strconv.ParseInt(t, 10, 64)
@@ -164,36 +211,6 @@ func strElapsed(t string) string {
 	} else {
 		return fmt.Sprintf("%d day", d)
 	}
-}
-
-func post(user *User, status string) error {
-
-	postId, err := redis.Int(conn.Do("INCR", "next_post_id"))
-	if err != nil {
-		return err
-	}
-	status = strings.Replace(status, "\n", " ", -1)
-	_, err = conn.Do("HMSET", fmt.Sprintf("post:%d", postId), "user_id", user.Id, "time", time.Now().Unix(), "body", status)
-	if err != nil {
-		return err
-	}
-	followers, err := redis.Strings(conn.Do("ZRANGE", "followers:"+user.Id, 0, -1))
-	if err != nil {
-		return err
-	}
-	followers = append(followers, user.Id)
-	for _, fId := range followers {
-		conn.Do("LPUSH", "posts:"+fId, postId)
-	}
-	_, err = conn.Do("LPUSH", "timeline", postId)
-	if err != nil {
-		return err
-	}
-	_, err = conn.Do("LTRIM", "timeline", 0, 1000)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func getPost(postId string) (*Post, error) {
