@@ -1,7 +1,8 @@
 retwis-go
 =========
 ## What is it
-retwis-go is the port to Go of the redis tutorial [Twitter clone](http://redis.io/topics/twitter-clone)
+retwis-go is the port to Go of the redis tutorial [Twitter clone](http://redis.io/topics/twitter-clone)  
+You can see it in action at <a href="http://retwis.sempe.net" target="_blank">http://retwis.sempe.net</a>
 
 ## How to contribute
 retwis-go is a direct port without almost no improvements done on the go. I have done it as a way to practice Golang and redis.
