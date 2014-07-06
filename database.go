@@ -13,28 +13,27 @@ const (
 var (
 	conn redis.Conn
 	// registerScript is used to register a new user atomically.
-	// Warning: retwis-go is not usable in a redis cluster because of
-	// of this script and the key `users .. userId` built in the LUA script
 	// Keys and arguments:
-	// KEYS[1] == "next_user_id"
-	// ARGV[1] == the username wanted
-	// ARGV[2] == the password used
-	// ARGV[3] == the auth token to use
-	// ARGV[4] == current timestamp
+	// KEYS[1] == "users"
+	// KEYS[2] == "user:"+userId
+	// KEYS[3] == "auths"
+	// KEYS[4] == "users_by_time"
+	// ARGV[1] == the userId
+	// ARGV[2] == the username wanted
+	// ARGV[3] == the password used
+	// ARGV[4] == the auth token to use
+	// ARGV[5] == current timestamp
 	// Return the authentification key or an error
-	registerScript = redis.NewScript(1, `
-local username = redis.call("HGET", "users", ARGV[1])
-print("valeur de username")
-print(username)
+	registerScript = redis.NewScript(4, `
+local username = redis.call("HGET", KEYS[1], ARGV[2])
 if username then
 	return redis.error_reply("Sorry the selected username is already in use.")
 end
-local userId = redis.call("INCR",KEYS[1])
-redis.call("HSET", "users", ARGV[1], userId)
-redis.call("HMSET", "user:" .. userId, "username", ARGV[1], "password", ARGV[2], "auth", ARGV[3])
-redis.call("HSET", "auths", ARGV[3], userId)
-redis.call("ZADD", "users_by_time", ARGV[4], ARGV[1])
-return ARGV[3]
+redis.call("HSET", KEYS[1], ARGV[2], ARGV[1])
+redis.call("HMSET", KEYS[2], "username", ARGV[2], "password", ARGV[3], "auth", ARGV[4])
+redis.call("HSET", KEYS[3], ARGV[4], ARGV[1])
+redis.call("ZADD", KEYS[4], ARGV[5], ARGV[2])
+return ARGV[4]
 		`)
 )
 

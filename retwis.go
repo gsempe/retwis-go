@@ -70,14 +70,22 @@ func profileByUserId(userId string) (*User, error) {
 
 func register(username, password string) (auth string, err error) {
 
-	auth = string(securecookie.GenerateRandomKey(32))
+	userId, err := redis.Int(conn.Do("INCR", "next_user_id"))
+	if err != nil {
+		return "", err
+	}
+	auth = string(securecookie.GenerateRandomKey(32)) // We reuse the securecookie random string generator
 	auth, err = redis.String(registerScript.Do(
 		conn,
-		"next_user_id",     // KEYS[1]
-		username,           // ARGV[1]
-		password,           // ARGV[2]
-		auth,               // ARGV[3]
-		time.Now().Unix())) // ARGV[4]
+		"users", // KEYS[1]
+		fmt.Sprintf("user:%d", userId), // KEYS[2]
+		"auths",            // KEYS[3]
+		"users_by_time",    // KEYS[4]
+		userId,             // ARGV[1]
+		username,           // ARGV[2]
+		password,           // ARGV[3]
+		auth,               // ARGV[4]
+		time.Now().Unix())) // ARGV[5]
 	return auth, err
 }
 
