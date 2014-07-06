@@ -4,9 +4,9 @@ retwis-go
 retwis-go is the port to Go of the redis tutorial [Twitter clone](http://redis.io/topics/twitter-clone)
 
 ## How to contribute
-retwis-go is a direct port with a minimum modifications. I have done it as a way to practice Golang and redis.
+retwis-go is a direct port without almost no improvements done on the go. I have done it as a way to practice Golang and redis.
 If you have the same goals and search projects to practice, just fork it and open pull requests.
-There is lot of things that can be improve:
+There is lot of things that can be done:
 - protect users passwords. They are not encrypted in the database
 - Many errors messages should not be shown to the retwis user
 - User profile is very poor. For instance there is no way to know who follows who
